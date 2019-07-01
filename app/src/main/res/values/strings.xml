@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AsynchTaskPractice</string>
+    <string name="start">Start</string>
 </resources>
