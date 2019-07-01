@@ -10,6 +10,9 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
+import java.util.WeakHashMap;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Pero";
@@ -34,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onClick: You pressed me");
 
 
-            ExampleAsyncTask task = new ExampleAsyncTask();
+            ExampleAsyncTask task = new ExampleAsyncTask(MainActivity.this);
             task.execute(10);
         }
     };
@@ -44,7 +47,17 @@ public class MainActivity extends AppCompatActivity {
     //the first parameter is the value we pass into the backround task to work with
     // the second parameter is what type we will use to measue progress
     // third (String) is a parameter which we get back from the AsynchTask
-    private class ExampleAsyncTask extends AsyncTask <Integer, Integer, String> {
+
+    //Since we can have memory lead because we Access UI elements from the mainActivity , if we destroy the activity the AsynchTask continues it's work
+    //until is done, this may cause memory leaks
+    // we can solve this using weak reference and making inner AsynchTask static
+    private static class ExampleAsyncTask extends AsyncTask <Integer, Integer, String> {
+
+        private WeakReference<MainActivity> activityWeakReference;
+
+        ExampleAsyncTask(MainActivity activity) {
+            activityWeakReference = new WeakReference<>(activity);
+        }
 
         //this method is 1 called
         //this runs on UI thread
@@ -52,7 +65,11 @@ public class MainActivity extends AppCompatActivity {
         protected void onPreExecute() {
             super.onPreExecute();
 
-            progressBar.setVisibility(View.VISIBLE);
+            MainActivity activity = activityWeakReference.get();
+            if (activity == null || activity.isFinishing()) {
+                return;
+            }
+            activity.progressBar.setVisibility(View.VISIBLE);
         }
 
         //this is our separate backround thread, not UI thread
@@ -78,7 +95,13 @@ public class MainActivity extends AppCompatActivity {
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
 
-            progressBar.setProgress(values[0]);
+
+            MainActivity activity = activityWeakReference.get();
+            if (activity == null || activity.isFinishing()) {
+                return;
+            }
+
+            activity.progressBar.setProgress(values[0]);
         }
 
 
@@ -88,7 +111,13 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
 
-            Toast.makeText(MainActivity.this, s, Toast.LENGTH_LONG).show();
+
+            MainActivity activity = activityWeakReference.get();
+            if (activity == null || activity.isFinishing()) {
+                return;
+            }
+
+            Toast.makeText(activity, s, Toast.LENGTH_LONG).show();
         }
 
 
